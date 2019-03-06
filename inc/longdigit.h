@@ -97,6 +97,26 @@ public:
 	void writeHexString(char **hexString);
 	UINT32 getcounter() { return counter; }
 	linkedList* append_digit(linkedList*, UINT32);
+	void delete_digit(linkedList*);
+	void copy(longdigits &num);
 
 	longdigits operator + (longdigits const &num);
+	longdigits operator += (longdigits const &num);
+	longdigits operator + (UINT32);
+	longdigits operator - (longdigits const &num);
+	longdigits operator - (UINT32);
+	longdigits operator * (longdigits &num);
+	bool operator > (longdigits const &num);
+	bool operator >= (longdigits const &num);
+	bool operator > (UINT32);
+	bool operator >= (UINT32);
+	bool operator < (UINT32);
+	bool operator <= (UINT32);
+	bool operator == (longdigits const &num);
+	bool operator == (UINT32);
+	bool operator < (longdigits const &num);
+	bool operator <= (longdigits const &num);
+	longdigits operator ++ ();
+	longdigits operator -- ();
+	longdigits operator ~ ();
 };
