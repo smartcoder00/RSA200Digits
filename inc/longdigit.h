@@ -18,6 +18,7 @@ public:
 			{
 				next4Byte = prev;
 				prev->update_prev(this);
+				prev4Byte = NULL;
 			}
 		}
 	}
@@ -83,6 +84,10 @@ class longdigits
 public:
 
 	longdigits() : longdigit(NULL), counter(0) {}
+	~longdigits()
+	{
+		//clear();
+	}
 	UINT32 carry;
 	UINT32 intermediate_results;
 
@@ -104,8 +109,10 @@ public:
 	longdigits operator += (longdigits const &num);
 	longdigits operator + (UINT32);
 	longdigits operator - (longdigits const &num);
+	longdigits operator -= (longdigits const &num);
 	longdigits operator - (UINT32);
 	longdigits operator * (longdigits &num);
+	longdigits operator / (longdigits &num);
 	bool operator > (longdigits const &num);
 	bool operator >= (longdigits const &num);
 	bool operator > (UINT32);
@@ -119,4 +126,19 @@ public:
 	longdigits operator ++ ();
 	longdigits operator -- ();
 	longdigits operator ~ ();
+	void scalarmultiply(UINT32);
+	void insertroot(UINT32);
+	void insertemptyroot(UINT32);
+	void clear()
+	{
+		linkedList *list = this->longdigit;
+		while (list) {
+
+			if (list->get_next()) delete(list->get_next());
+			else list = NULL;
+		}
+		if (list) delete(list);
+		counter = 0;
+		this->longdigit = 0;
+	}
 };

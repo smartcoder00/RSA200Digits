@@ -3,8 +3,8 @@
 #include "string.h"
 #include "stdio.h"
 
-char str1[] = "5555555555555555555555555";
-char str2[] = "1000000";
+char str1[] = "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF";
+char str2[] = "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF";
 char str3[500] = "";
 
 void longdigits::readHexString(CHAR *hexString)
@@ -184,13 +184,59 @@ longdigits longdigits::operator - (longdigits const &num)
 			v1 -= c1; c1 = 0;
 		}
 		v1 -= v2;
-		if (list1 || list2 || v1)
-		{
-			diff_list = diff.append_digit(diff_list, v1);
-		}
+		diff_list = diff.append_digit(diff_list, v1);
 		v2 = v1 = 0;
 	}
 	return diff;
+}
+
+longdigits longdigits::operator -= (longdigits const &num)
+{
+	longdigits diff;
+	UINT64 v1 = 0;
+	UINT32 v2 = 0;
+	UINT32 c1 = 0;
+	linkedList *listp = NULL;
+	linkedList *listn = NULL;
+	linkedList *list1 = this->longdigit;
+	linkedList *list2 = num.longdigit;
+	linkedList *diff_list = diff.longdigit;
+
+	while (list1 || list2)
+	{
+		if (list1)
+		{
+			v1 = list1->get_value();
+			listp = list1;
+			list1 = list1->get_next();
+		}
+		if (list2)
+		{
+			v2 = list2->get_value();
+			list2 = list2->get_next();
+		}
+		if (v1 < v2 + c1)
+		{
+			v1 += 0x100000000;
+			v1 -= c1; c1 = 1;
+
+		}
+		else
+		{
+			v1 -= c1; c1 = 0;
+		}
+		v1 -= v2;
+		if (listp)
+		{
+			listp->set_value(v1);
+			listn = listp;
+			if (!list1 && v1 == 0 && listp->get_prev())
+				this->delete_digit(listp);
+			listp = NULL;				
+		}
+		v2 = v1 = 0;
+	}
+	return *this;
 }
 
 bool longdigits::operator > (longdigits const &num)
@@ -358,41 +404,106 @@ longdigits longdigits::operator + (UINT32 value)
 {
 	UINT64 v1 = value;
 	UINT32 v2 = 0;
+	longdigits sum;
 	linkedList *list = this->longdigit;
-
+	linkedList *sumlist = NULL;
+	
 	while (list)
 	{
-		if (list)
-		{
 			v1 += list->get_value();
 			v2 = v1 & 0xFFFFFFFF;
-			list->set_value(v2);
 			v1 >>= 32;
+			sumlist = sum.append_digit(sumlist, v2);
 			list = list->get_next();
-		}
 	}
 	if (v1)
 	{
-		this->append_digit(list, v1);
+		sumlist = sum.append_digit(sumlist, v1);
 	}
-	return *this;
+	return sum;
+}
+
+void longdigits::scalarmultiply (UINT32 value)
+{
+	UINT64 v1 = 0;
+	UINT32 v2 = 0;
+	linkedList *list = this->longdigit;
+	linkedList *listp = NULL;
+
+	while (list)
+	{
+		v1 += ((UINT64)value * list->get_value());
+		v2 = v1 & 0xFFFFFFFF;
+		list->set_value(v2);
+		v1 >>= 32;
+		listp = list;
+		list = list->get_next();
+	}
+	if (v1 && listp)
+	{
+		this->append_digit(listp, v1);
+	}
 }
 
 longdigits longdigits::operator ++ ()
 {
-	return *this + 1;
+	UINT64 v1 = 1;
+	UINT32 v2 = 0;
+	linkedList *list = this->longdigit;
+	linkedList *listp = NULL;
+
+	while (list)
+	{
+		v1 += list->get_value();
+		v2 = v1 & 0xFFFFFFFF;
+		v1 >>= 32;
+		list->set_value(v2);
+		listp = list;
+		list = list->get_next();
+	}
+	if (v1)
+	{
+		this->append_digit(listp, v1);
+	}
+	return *this;
 }
 
 longdigits longdigits::operator -- ()
 {
-	return *this - 1;
+	UINT64 v1 = 1;
+	UINT32 v2 = 0;
+	linkedList *list = this->longdigit;
+	linkedList *listp = NULL;
+
+	while (list)
+	{
+		v1 = list->get_value();
+		if (v1 > 0)
+		{
+			list->set_value(v1 - 1);
+			listp = list;
+			list = NULL;
+		}
+		else
+		{
+			list->set_value(0xFFFFFFFF);
+			list = list->get_next();
+		}
+	}
+	if (!listp->get_value() && listp->get_prev() && !listp->get_next())
+	{
+		this->delete_digit(listp);
+	}
+	return *this;
 }
 
 longdigits longdigits::operator - (UINT32 value)
 {
 	UINT64 v1 = value;
 	UINT32 v2 = 0;
+	longdigits diff;
 	linkedList *list = this->longdigit;
+	linkedList *difflist = NULL;
 
 	while (list && value)
 	{
@@ -408,10 +519,10 @@ longdigits longdigits::operator - (UINT32 value)
 				v1 -= value;
 				value = 0;
 			}
-			list->set_value(v1);
-			if (!list->get_next() && !v1)
+			difflist = diff.append_digit(difflist, v1);
+			if (!list->get_next() && !v1 && difflist->get_prev())
 			{
-				this->delete_digit(list);
+				diff.delete_digit(difflist);
 				list = NULL;
 			}
 			else
@@ -420,7 +531,7 @@ longdigits longdigits::operator - (UINT32 value)
 			}
 		}
 	}
-	return *this;
+	return diff;
 }
 
 longdigits longdigits::operator ~ ()
@@ -455,48 +566,106 @@ void longdigits::copy(longdigits &num)
 	}
 }
 
-longdigits longdigits::operator * (longdigits &num)
+longdigits longdigits::operator / (longdigits &num)
 {
-	longdigits num1;
-	longdigits num2;
+	longdigits quotient;
+	longdigits den;
 	longdigits product;
-	num.copy(num2);
-	do
+	if (num == 0)
+		return quotient;
+	quotient.append_digit(quotient.longdigit, 0);
+	this->copy(den);
+	while (den >= num )
 	{
-		num1 += *this;
+		++quotient;
+		den -= num;
+	}
 
-	} while (--num2 > 0);
-	
-	return num1;
+	return quotient;
 }
 
+void longdigits::insertroot(UINT32 value)
+{
+	linkedList *list = new linkedList(value, longdigit, FALSE);
+	longdigit = list;
+	counter++;
+}
+
+void longdigits::insertemptyroot(UINT32 count)
+{
+	while (count--)
+	{
+		linkedList *list = new linkedList(0, longdigit, FALSE);
+		longdigit = list;
+		counter++;
+	}
+}
+
+longdigits longdigits::operator * (longdigits &num)
+{
+	longdigits product;
+	longdigits intermediate;
+	UINT32     loopcount = 0;
+
+	linkedList *list = this->longdigit;
+	product.append_digit(NULL, 0);
+	while (list)
+	{
+		num.copy(intermediate);
+		intermediate.scalarmultiply(list->get_value());
+		intermediate.insertemptyroot(loopcount++);
+		list = list->get_next();
+		product += intermediate;
+		intermediate.clear();
+	}
+	return product;
+}
+
+void printall(char *tag, longdigits &num1, longdigits &num2, longdigits &num3, longdigits &num4)
+{
+	CHAR *str;
+	printf("== %-15s ========================================================\n", tag);
+	num1.writeHexString(&str);
+	printf("num1: %s\n", str);
+	delete str;
+	num2.writeHexString(&str);
+	printf("num2: %s\n", str);
+	delete str;
+	num3.writeHexString(&str);
+	printf("num3: %s\n", str);
+	delete str;
+	num4.writeHexString(&str);
+	printf("num4: %s\n", str);
+	delete str;
+	printf("===========================================================================\n");
+}
 
 void main()
 {
 	CHAR *strtemp;
 	longdigits num1, num2, num3, num4;
 	num1.readHexString(str1);
-	num1.writeHexString(&strtemp);
-	printf("num1: %s\n", strtemp);
 	num2.readHexString(str2);;
-	num2.writeHexString(&strtemp);
-	printf("num2: %s\n", strtemp);
+	printall("Read Data",num1, num2, num3, num4);
 
 	num3 = num1 + num2;
-	num3.writeHexString(&strtemp);
-	printf("num3(sum): %s\n", strtemp);
-	num3 = num1 - num2;
-	num3.writeHexString(&strtemp);
-	printf("num3(diff): %s\n", strtemp);
-	//~num2;
-	num2.writeHexString(&strtemp);
-	printf("~num2: %s\n", strtemp);
-	//++num2;
-	num2.writeHexString(&strtemp);
-	printf("++num2: %s\n", strtemp);
-	//--num2;
-	num2.writeHexString(&strtemp);
-	printf("--num2: %s\n", strtemp);
+	num4 = num1 + 2;
+	printall("Test1", num1, num2, num3, num4);
+	num3.clear(); num4.clear();
+
+	num3 = num1 - num2; num1.copy(num4); ~num4;
+	printall("Test2", num1, num2, num3, num4);
+	num3.clear(); num4.clear();
+
+	num1.copy(num3); num1.copy(num4);
+	--num3;++num4;
+	printall("Test3", num1, num2, num3, num4);
+	num3.clear(); num4.clear();
+
+	num3 = num1 * num2;
+	printall("Test4", num1, num2, num3, num4);
+	num3.clear(); num4.clear();
+
 	printf("%d %d %d\n", num1 >= num2, num1 <= num1, num1 == num2);
 	num4 = num1 * num2;
 	num4.writeHexString(&strtemp);
