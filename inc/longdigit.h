@@ -48,7 +48,6 @@ private:
 	linkedList  *next4Byte;
 	linkedList  *prev4Byte;
 	UINT32       value;
-	UINT32       counter;
 	BOOL         isEmpty;
 protected:
 
@@ -96,11 +95,17 @@ private:
 	UINT32 counter;
 
 private:
+	bool longdigits::divide(longdigits &denominator,
+		longdigits &quotient, longdigits &reminder);
+	UINT32 getbits();
+	BOOL setbit(UINT32 Idx, BOOL Value);
+	void longdigits::trim();
 
 public:
 	void readHexString(char *hexString);
 	void writeHexString(char **hexString);
 	UINT32 getcounter() { return counter; }
+	linkedList* append_digit(UINT32);
 	linkedList* append_digit(linkedList*, UINT32);
 	void delete_digit(linkedList*);
 	void copy(longdigits &num);
@@ -113,14 +118,18 @@ public:
 	longdigits operator - (UINT32);
 	longdigits operator * (longdigits &num);
 	longdigits operator / (longdigits &num);
+	longdigits operator % (longdigits &num);
 	bool operator > (longdigits const &num);
 	bool operator >= (longdigits const &num);
 	bool operator > (UINT32);
+	void operator >> (UINT32); // Max Shift is 32
+	void operator << (UINT32); // Max Shift is 32
 	bool operator >= (UINT32);
 	bool operator < (UINT32);
 	bool operator <= (UINT32);
 	bool operator == (longdigits const &num);
 	bool operator == (UINT32);
+	bool operator != (UINT32);
 	bool operator < (longdigits const &num);
 	bool operator <= (longdigits const &num);
 	longdigits operator ++ ();

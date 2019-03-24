@@ -3,8 +3,8 @@
 #include "string.h"
 #include "stdio.h"
 
-char str1[] = "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF";
-char str2[] = "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF";
+char str1[] = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+char str2[] = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 char str3[500] = "";
 
 void longdigits::readHexString(CHAR *hexString)
@@ -60,6 +60,18 @@ void longdigits::writeHexString(char **hexString)
 	*hexString = str;
 }
 
+linkedList* longdigits::append_digit(UINT32 value)
+{
+	linkedList *list = longdigit;
+	linkedList *prev = NULL;
+	while(list)
+	{
+		prev = list;
+		list = list->get_next();
+	}
+	return append_digit(prev,value);
+}
+
 linkedList* longdigits::append_digit(linkedList* prev, UINT32 value)
 {
 	linkedList *list = new linkedList(value, prev);
@@ -72,7 +84,8 @@ linkedList* longdigits::append_digit(linkedList* prev, UINT32 value)
 void longdigits::delete_digit(linkedList* list)
 {
 	delete list;
-	counter--;
+	if (counter > 0)
+		counter--;
 	if (counter == 0)
 		longdigit = NULL;
 }
@@ -149,6 +162,29 @@ longdigits longdigits::operator += (longdigits const &num)
 		this->append_digit(listp, v1);
 	}
 	return *this;
+}
+
+void longdigits::trim()
+{
+	linkedList *list = this->longdigit;
+	linkedList *listp = NULL;
+	UINT32 counter = this->counter;
+
+	for (INT32 i = 0; i < counter; i++)
+	{
+		if (list->get_next())
+			list = list->get_next();
+	}
+	if(counter > 0)
+	counter--;
+	for (INT32 i = 0; i < counter; i++)
+	{
+		UINT32 value = list->get_value();
+		if (value) break;
+		listp = list;
+		list = list->get_prev();
+		this->delete_digit(listp);
+	}
 }
 
 longdigits longdigits::operator - (longdigits const &num)
@@ -236,6 +272,7 @@ longdigits longdigits::operator -= (longdigits const &num)
 		}
 		v2 = v1 = 0;
 	}
+	trim();
 	return *this;
 }
 
@@ -369,6 +406,16 @@ bool longdigits::operator == (UINT32 num)
 	return false;
 }
 
+bool longdigits::operator != (UINT32 num)
+{
+	if (counter != 1)
+		return true;
+	linkedList *list = this->longdigit;
+	if (list->get_value() == num)
+		return false;
+	return true;
+}
+
 bool longdigits::operator > (UINT32 num)
 {
 	if (counter > 1)
@@ -399,6 +446,107 @@ bool longdigits::operator <= (UINT32 num)
 	return (*this < num) | (*this == num);
 }
 
+
+void longdigits::operator >> (UINT32 value)
+{
+	UINT64 v1 = 0;
+	UINT32 v2 = 0;
+	linkedList *list = this->longdigit;
+	linkedList *listp = NULL;
+
+
+	while (list)
+	{
+		v1 = ((UINT64)list->get_value()) << (32 - value);
+		v2 = v1 & 0xFFFFFFFF;
+		if (v2 && listp)
+		{
+			v2 += listp->get_value();
+			listp->set_value(v2);
+		}
+		v1 >>= 32;
+		list->set_value(v1);
+		listp = list;
+		list = list->get_next();
+	}
+	if (!v1 && listp->get_prev() != NULL)
+	{
+		delete_digit(listp);
+	}
+}
+
+void longdigits::operator << (UINT32 value)
+{
+	UINT64 v1 = 0;
+	UINT32 v2 = 0;
+	linkedList *list = this->longdigit;
+	linkedList *listp = NULL;
+
+	while (list)
+	{
+		listp = list;
+		v1 = list->get_value() << value;
+		v1 += v2;
+		v2 = v1 >> 32;
+		list->set_value(v1 & 0xFFFFFFFF);
+		list = list->get_next();
+	}
+	if (v2)
+	{
+		append_digit(listp, v2);
+	}
+}
+
+UINT32 longdigits::getbits()
+{
+	UINT32 bitcount = 0;
+	UINT32 v1 = 0;
+	linkedList *list = this->longdigit;
+
+	while (list)
+	{
+		v1 = list->get_value();
+		list = list->get_next();
+		if (list)
+			bitcount += 32;
+		else
+		{
+			while (v1)
+			{
+				bitcount++;
+				v1 >>= 1;
+			}
+		}
+	}
+	return bitcount;
+}
+
+BOOL longdigits::setbit(UINT32 Idx, BOOL Value)
+{
+	//Should be inside the total length
+	UINT32 bitcount = Idx;
+	UINT32 v1 = 0;
+	linkedList *list = this->longdigit;
+
+	while (list)
+	{
+		list = list->get_next();
+		if (bitcount < 32)
+		{
+			v1 = list->get_value();
+			v1 &= ~(1 << bitcount);
+			if (Value)
+				v1 |= (1 << bitcount);
+			list->set_value(v1);
+			return TRUE;
+		}
+		else
+		{
+			bitcount -= 32;
+		}
+	}
+	return FALSE;
+}
 
 longdigits longdigits::operator + (UINT32 value)
 {
@@ -566,24 +714,67 @@ void longdigits::copy(longdigits &num)
 	}
 }
 
-longdigits longdigits::operator / (longdigits &num)
+bool longdigits::divide(longdigits &denominator,
+	longdigits &quotient, longdigits &reminder)
+{
+	longdigits &numerator = *this;
+	longdigits intermediate;
+	longdigits subproduct;
+	if(denominator == 0)
+	{
+		//Error Case counter = 0
+		return FALSE;
+	}
+
+	if (numerator < denominator)
+	{
+		quotient.append_digit(NULL, 0);
+		denominator.copy(reminder);
+		return TRUE;
+	}
+
+	UINT32 bit_count = numerator.getbits()-1;
+	UINT32 first_value = 1 << (bit_count % 32);
+	
+	intermediate.insertemptyroot(numerator.getcounter()-1);
+	intermediate.append_digit(first_value);
+	numerator.copy(reminder);
+	while(intermediate != 0)
+	{
+		subproduct = intermediate * denominator;
+		if (subproduct <= reminder)
+		{
+			reminder -= subproduct;
+			quotient += intermediate;
+		}
+		subproduct.clear();
+		intermediate >> 1;
+	}
+
+	return TRUE;
+}
+
+longdigits longdigits::operator / (longdigits &denominator)
 {
 	longdigits quotient;
-	longdigits den;
-	longdigits product;
-	if (num == 0)
-		return quotient;
-	quotient.append_digit(quotient.longdigit, 0);
-	this->copy(den);
-	while (den >= num )
-	{
-		++quotient;
-		den -= num;
-	}
+	longdigits reminder;
+	longdigits &numerator = *this;
+	numerator.divide(denominator, quotient, reminder);
+	reminder.clear();
 
 	return quotient;
 }
 
+longdigits longdigits::operator % (longdigits &denominator)
+{
+	longdigits quotient;
+	longdigits reminder;
+	longdigits &numerator = *this;
+	numerator.divide(denominator, quotient, reminder);
+	quotient.clear();
+
+	return reminder;
+}
 void longdigits::insertroot(UINT32 value)
 {
 	linkedList *list = new linkedList(value, longdigit, FALSE);
@@ -640,6 +831,8 @@ void printall(char *tag, longdigits &num1, longdigits &num2, longdigits &num3, l
 	printf("===========================================================================\n");
 }
 
+
+
 void main()
 {
 	CHAR *strtemp;
@@ -665,6 +858,13 @@ void main()
 	num3 = num1 * num2;
 	printall("Test4", num1, num2, num3, num4);
 	num3.clear(); num4.clear();
+
+	num3 = num1 / num2;
+	num4 = num1 % num2;
+	printall("Test5", num1, num2, num3, num4);
+	num3.clear(); num4.clear();
+
+
 
 	printf("%d %d %d\n", num1 >= num2, num1 <= num1, num1 == num2);
 	num4 = num1 * num2;
