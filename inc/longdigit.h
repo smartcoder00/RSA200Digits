@@ -81,8 +81,14 @@ public:
 class longdigits
 {
 public:
+	enum SIGN {
+		POSTIVE = 1,
+		NEGATIVE = -1,
 
-	longdigits() : longdigit(NULL), counter(0) {}
+	};
+public:
+
+	longdigits() : longdigit(NULL), counter(0), minussign(POSTIVE) {}
 	~longdigits()
 	{
 		//clear();
@@ -92,11 +98,16 @@ public:
 
 private:
 	linkedList *longdigit;
-	UINT32 counter;
+	UINT32      counter;
+	SIGN        minussign;
 
 private:
 	bool longdigits::divide(longdigits &denominator,
 		longdigits &quotient, longdigits &reminder);
+	longdigits longdigits::add(longdigits const &num2) const;
+	longdigits longdigits::sub(longdigits const &num2) const;
+	int longdigits::abscompare(longdigits const &num2) const;
+	int longdigits::compare(longdigits const &num2) const;
 	UINT32 getbits();
 	BOOL setbit(UINT32 Idx, BOOL Value);
 	void longdigits::trim();
@@ -109,6 +120,8 @@ public:
 	linkedList* append_digit(linkedList*, UINT32);
 	void delete_digit(linkedList*);
 	void copy(longdigits &num);
+	void setsign(SIGN signValue) { minussign = signValue; }
+	SIGN getsign() const { return minussign; }
 
 	longdigits operator + (longdigits const &num);
 	longdigits operator += (longdigits const &num);
@@ -121,6 +134,7 @@ public:
 	longdigits operator % (longdigits &num);
 	bool operator > (longdigits const &num);
 	bool operator >= (longdigits const &num);
+	bool operator != (longdigits const &num2);
 	bool operator > (UINT32);
 	void operator >> (UINT32); // Max Shift is 32
 	void operator << (UINT32); // Max Shift is 32

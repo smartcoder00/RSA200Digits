@@ -3,14 +3,27 @@
 #include "string.h"
 #include "stdio.h"
 
-char str1[] = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
-char str2[] = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+char str1[] = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+char str2[] = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 char str3[500] = "";
+
+char str_p[] = "65";
+char str_q[] = "67";
+char str_e[] = "1F";
+
 
 void longdigits::readHexString(CHAR *hexString)
 {
 	if (hexString)
 	{
+		CHAR signValue = hexString[0];
+		if (signValue == '+' || signValue == '-')
+		{
+			hexString++;
+			if (signValue == '-')
+				this->setsign(NEGATIVE);
+		}
+		
 		UINT32 len  = strlen(hexString);
 		CHAR *hexStringtemp =  new CHAR[len + 1];
 		linkedList *list = longdigit;
@@ -33,7 +46,7 @@ void longdigits::readHexString(CHAR *hexString)
 void longdigits::writeHexString(char **hexString)
 {
 	INT32 count = counter;
-	char *str = new CHAR[counter * 8 + 1];
+	char *str = new CHAR[counter * 8 +2];
 	str[0] = NULL;
 	linkedList *list = longdigit;
 	for (INT32 i = 0; i < counter; i++)
@@ -41,6 +54,10 @@ void longdigits::writeHexString(char **hexString)
 		if (list->get_next())
 			list = list->get_next();
 
+	}
+	if (getsign() == NEGATIVE)
+	{
+		str[0] = '-'; str[1] = NULL;
 	}
 	for (INT32 i = 0; i < counter; i++)
 	{
@@ -90,13 +107,36 @@ void longdigits::delete_digit(linkedList* list)
 		longdigit = NULL;
 }
 
-longdigits longdigits::operator + (longdigits const &num)
+void longdigits::trim()
+{
+	linkedList *list = this->longdigit;
+	linkedList *listp = NULL;
+	UINT32 counter = this->counter;
+
+	for (INT32 i = 0; i < counter; i++)
+	{
+		if (list->get_next())
+			list = list->get_next();
+	}
+	if (counter > 0)
+		counter--;
+	for (INT32 i = 0; i < counter; i++)
+	{
+		UINT32 value = list->get_value();
+		if (value) break;
+		listp = list;
+		list = list->get_prev();
+		this->delete_digit(listp);
+	}
+}
+
+longdigits longdigits::add(longdigits const &num2) const
 {
 	longdigits sum;
 	UINT64 v1 = 0;
 	UINT32 v2 = 0;
 	linkedList *list1 = this->longdigit;
-	linkedList *list2 = num.longdigit;
+	linkedList *list2 = num2.longdigit;
 	linkedList *sum_list = sum.longdigit;
 
 	while (list1 || list2)
@@ -122,79 +162,14 @@ longdigits longdigits::operator + (longdigits const &num)
 	return sum;
 }
 
-longdigits longdigits::operator += (longdigits const &num)
-{
-	UINT64 v1 = 0;
-	UINT32 v2 = 0;
-	linkedList *list1 = this->longdigit;
-	linkedList *listp = NULL;
-	linkedList *listn = NULL;
-	linkedList *list2 = num.longdigit;
-
-	while (list1 || list2)
-	{
-		if (list1)
-		{
-			v1 += list1->get_value();
-			listp = list1;
-			list1 = list1->get_next();
-		}
-		if (list2)
-		{
-			v1 += list2->get_value();
-			list2 = list2->get_next();
-		}
-		v2 = v1 & 0xFFFFFFFF;
-		v1 >>= 32;
-		if (listp)
-		{
-			listp->set_value(v2);
-			listn = listp;
-			listp = NULL;
-		}
-		else
-		{
-			listn = this->append_digit(listn, v2);
-		}
-	}
-	if (v1)
-	{
-		this->append_digit(listp, v1);
-	}
-	return *this;
-}
-
-void longdigits::trim()
-{
-	linkedList *list = this->longdigit;
-	linkedList *listp = NULL;
-	UINT32 counter = this->counter;
-
-	for (INT32 i = 0; i < counter; i++)
-	{
-		if (list->get_next())
-			list = list->get_next();
-	}
-	if(counter > 0)
-	counter--;
-	for (INT32 i = 0; i < counter; i++)
-	{
-		UINT32 value = list->get_value();
-		if (value) break;
-		listp = list;
-		list = list->get_prev();
-		this->delete_digit(listp);
-	}
-}
-
-longdigits longdigits::operator - (longdigits const &num)
+longdigits longdigits::sub(longdigits const &num2) const
 {
 	longdigits diff;
 	UINT64 v1 = 0;
 	UINT32 v2 = 0;
 	UINT32 c1 = 0;
 	linkedList *list1 = this->longdigit;
-	linkedList *list2 = num.longdigit;
+	linkedList *list2 = num2.longdigit;
 	linkedList *diff_list = diff.longdigit;
 
 	while (list1 || list2)
@@ -226,226 +201,279 @@ longdigits longdigits::operator - (longdigits const &num)
 	return diff;
 }
 
-longdigits longdigits::operator -= (longdigits const &num)
+int longdigits::abscompare(longdigits const &num2) const
 {
-	longdigits diff;
-	UINT64 v1 = 0;
-	UINT32 v2 = 0;
-	UINT32 c1 = 0;
-	linkedList *listp = NULL;
-	linkedList *listn = NULL;
+	int RETVAL_GREATER = 1;
+	int RETVAL_LESSER = -1;
+	int RETVAL_EQUAL = 0;
+
 	linkedList *list1 = this->longdigit;
-	linkedList *list2 = num.longdigit;
-	linkedList *diff_list = diff.longdigit;
+	linkedList *list2 = num2.longdigit;
 
-	while (list1 || list2)
+	if (counter > num2.counter) return RETVAL_GREATER;
+	else if (counter < num2.counter) return RETVAL_LESSER;
+
+	for (INT32 i = 0; i < counter; i++)
 	{
-		if (list1)
-		{
-			v1 = list1->get_value();
-			listp = list1;
+		if (list1->get_next())
 			list1 = list1->get_next();
-		}
-		if (list2)
-		{
-			v2 = list2->get_value();
+		if (list2->get_next())
 			list2 = list2->get_next();
-		}
-		if (v1 < v2 + c1)
-		{
-			v1 += 0x100000000;
-			v1 -= c1; c1 = 1;
 
+	}
+	for (INT32 i = 0; i < counter; i++)
+	{
+		if (list1 || list2)
+		{
+			if (list1->get_value() == list2->get_value())
+			{
+				list1 = list1->get_prev();
+				list2 = list2->get_prev();
+
+			}
+			else if (list1->get_value() > list2->get_value()) return RETVAL_GREATER;
+			else return RETVAL_LESSER;
+		}
+	}
+	return RETVAL_EQUAL;
+}
+
+int longdigits::compare(longdigits const &num2) const
+{
+	int RETVAL_GREATER = 1;
+	int RETVAL_LESSER = -1;
+	int RETVAL_EQUAL = 0;
+
+	SIGN num1sign, num2sign;
+	longdigits const &num1 = *this;
+
+	num1sign = num1.getsign();
+	num2sign = num2.getsign();
+	if (num1sign > num2sign)
+		return RETVAL_GREATER;
+	else if (num1sign < num2sign)
+		return RETVAL_LESSER;
+
+	//Sign is same after this
+	int compareresult = abscompare(num2);
+
+	if (compareresult != RETVAL_EQUAL && num1sign == NEGATIVE)
+		compareresult = compareresult == RETVAL_GREATER ? RETVAL_LESSER : RETVAL_GREATER;
+
+	return compareresult;
+}
+
+longdigits longdigits::operator + (longdigits const &num2)
+{
+	SIGN num1sign, num2sign;
+	longdigits sum, &num1 = *this;
+
+	num1sign = num1.getsign();
+	num2sign = num2.getsign();
+	
+	if (num1sign == num2sign)
+	{
+		sum = num1.add(num2);
+		sum.setsign(num1sign);
+	}
+	else
+	{
+		int compareresult = num1.abscompare(num2);
+		if (compareresult == 0)
+		{
+			sum.append_digit(0);
+		}
+		else if (compareresult > 0)
+		{
+			sum = num1.sub(num2);
+			sum.setsign(num1sign);
 		}
 		else
 		{
-			v1 -= c1; c1 = 0;
-		}
-		v1 -= v2;
-		if (listp)
+			sum = num2.sub(num1);
+			sum.setsign(num2sign);
+		}		
+	}
+	return sum;
+}
+
+longdigits longdigits::operator - (longdigits const &num2)
+{
+	SIGN num1sign, num2sign;
+	longdigits diff, &num1 = *this;
+
+	num1sign = num1.getsign();
+	num2sign = num2.getsign();
+
+	if (num1sign != num2sign)
+	{
+		diff = num1.add(num2);
+		diff.setsign(num1sign);
+	}
+	else
+	{
+		int compareresult = num1.abscompare(num2);
+		if (compareresult == 0)
 		{
-			listp->set_value(v1);
-			listn = listp;
-			if (!list1 && v1 == 0 && listp->get_prev())
-				this->delete_digit(listp);
-			listp = NULL;				
+			diff.append_digit(0);
 		}
-		v2 = v1 = 0;
-	}
-	trim();
-	return *this;
-}
-
-bool longdigits::operator > (longdigits const &num)
-{
-	UINT64 v1 = 0;
-	UINT32 v2 = 0;
-	UINT32 c1 = 0;
-	linkedList *list1 = this->longdigit;
-	linkedList *list2 = num.longdigit;
-
-	if (counter > num.counter) return true;
-	else if (counter < num.counter) return false;
-
-	for (INT32 i = 0; i < counter; i++)
-	{
-		if (list1->get_next())
-			list1 = list1->get_next();
-		if (list2->get_next())
-			list2 = list2->get_next();
-
-	}
-	for (INT32 i = 0; i < counter; i++)
-	{
-		if (list1 || list2)
+		else if (compareresult > 0)
 		{
-			if (list1->get_value() == list2->get_value())
-			{
-				list1 = list1->get_prev();
-				list2 = list2->get_prev();
-
-			}
-			else if (list1->get_value() > list2->get_value()) return true;
-			else return false;
+			diff = num1.sub(num2);
+			diff.setsign(num1sign);
 		}
-	}
-	return false;
-}
-
-bool longdigits::operator >= (longdigits const &num)
-{
-	UINT64 v1 = 0;
-	UINT32 v2 = 0;
-	UINT32 c1 = 0;
-	linkedList *list1 = this->longdigit;
-	linkedList *list2 = num.longdigit;
-
-	if (counter > num.counter) return true;
-	else if (counter < num.counter) return false;
-
-	for (INT32 i = 0; i < counter; i++)
-	{
-		if (list1->get_next())
-			list1 = list1->get_next();
-		if (list2->get_next())
-			list2 = list2->get_next();
-
-	}
-	for (INT32 i = 0; i < counter; i++)
-	{
-		if (list1 || list2)
+		else
 		{
-			if (list1->get_value() == list2->get_value())
-			{
-				list1 = list1->get_prev();
-				list2 = list2->get_prev();
-
-			}
-			else if (list1->get_value() > list2->get_value()) return true;
-			else return false;
+			diff = num2.sub(num1);
+			diff.setsign(num1sign == SIGN::POSTIVE? SIGN::NEGATIVE : SIGN::POSTIVE);
 		}
 	}
-	return true;
+	return diff;
 }
 
-bool longdigits::operator <= (longdigits const &num)
+longdigits longdigits::operator += (longdigits const &num2)
 {
-	if (*this > num)
-		return false;
-	return true;
+	longdigits sum = *this + num2;
+	this->clear();
+	this->longdigit = sum.longdigit;
+	this->counter = sum.getcounter();
+	this->setsign(sum.getsign());
+	return sum;
 }
 
-bool longdigits::operator < (longdigits const &num)
+longdigits longdigits::operator -= (longdigits const &num2)
 {
-	if (*this > num || *this == num)
-		return false;
-	return true;
+	longdigits diff = *this - num2;
+	this->clear();
+	this->longdigit = diff.longdigit;
+	this->counter = diff.getcounter();
+	this->setsign(diff.getsign());
+	return diff;
 }
 
-bool longdigits::operator == (longdigits const &num)
+bool longdigits::operator > (longdigits const &num2)
 {
-	UINT64 v1 = 0;
-	UINT32 v2 = 0;
-	UINT32 c1 = 0;
-	linkedList *list1 = this->longdigit;
-	linkedList *list2 = num.longdigit;
+	if (compare(num2) > 0) return TRUE;
+	return FALSE;
+}
 
-	if (counter != num.counter) return false;
+bool longdigits::operator >= (longdigits const &num2)
+{
+	if (compare(num2) >= 0) return TRUE;
+	return FALSE;
+}
 
-	for (INT32 i = 0; i < counter; i++)
-	{
-		if (list1->get_next())
-			list1 = list1->get_next();
-		if (list2->get_next())
-			list2 = list2->get_next();
+bool longdigits::operator < (longdigits const &num2)
+{
+	if (compare(num2) < 0) return TRUE;
+	return FALSE;
+}
 
-	}
-	for (INT32 i = 0; i < counter; i++)
-	{
-		if (list1 || list2)
-		{
-			if (list1->get_value() == list2->get_value())
-			{
-				list1 = list1->get_prev();
-				list2 = list2->get_prev();
+bool longdigits::operator <= (longdigits const &num2)
+{
+	if (compare(num2) <= 0) return TRUE;
+	return FALSE;
+}
 
-			}
-			else return false;
-		}
-	}
-	return true;
+bool longdigits::operator == (longdigits const &num2)
+{
+	if (compare(num2) == 0) return TRUE;
+	return FALSE;
+}
+
+bool longdigits::operator != (longdigits const &num2)
+{
+	if (compare(num2) != 0) return TRUE;
+	return FALSE;
 }
 
 bool longdigits::operator == (UINT32 num)
 {
-	if (counter != 1 )
-		return false;
-	linkedList *list = this->longdigit;
-	if (list->get_value() == num)
-		return true;
-	return false;
+	longdigits &num1 = *this, num2;
+	num2.append_digit(num);
+	bool ret = num1 == num2;
+	num2.clear();
+	return ret;
 }
 
 bool longdigits::operator != (UINT32 num)
 {
-	if (counter != 1)
-		return true;
-	linkedList *list = this->longdigit;
-	if (list->get_value() == num)
-		return false;
-	return true;
+	longdigits &num1 = *this, num2;
+	num2.append_digit(num);
+	bool ret = num1 != num2;
+	num2.clear();
+	return ret;
 }
 
 bool longdigits::operator > (UINT32 num)
 {
-	if (counter > 1)
-		return true;
-	linkedList *list = this->longdigit;
-	if(counter == 1)
-		if (list->get_value() > num) return true;
-	return false;
+	longdigits &num1 = *this, num2;
+	num2.append_digit(num);
+	bool ret = num1 > num2;
+	num2.clear();
+	return ret;
 }
 
 bool longdigits::operator >= (UINT32 num)
 {
-	return (*this > num) | (*this == num);
+	longdigits &num1 = *this, num2;
+	num2.append_digit(num);
+	bool ret = num1 >= num2;
+	num2.clear();
+	return ret;
 }
 
 bool longdigits::operator < (UINT32 num)
 {
-	if (counter > 1)
-		return false;
-	linkedList *list = this->longdigit;
-	if (counter == 1)
-		if (list->get_value() < num) return true;
-	return false;
+	longdigits &num1 = *this, num2;
+	num2.append_digit(num);
+	bool ret = num1 < num2;
+	num2.clear();
+	return ret;
 }
 
 bool longdigits::operator <= (UINT32 num)
 {
-	return (*this < num) | (*this == num);
+	longdigits &num1 = *this, num2;
+	num2.append_digit(num);
+	bool ret = num1 <= num2;
+	num2.clear();
+	return ret;
+}
+longdigits longdigits::operator + (UINT32 value)
+{
+	longdigits &num1 = *this, num2, sum;
+	num2.append_digit(value);
+	sum = num1 + num2;
+	num2.clear();
+	return sum;
 }
 
+longdigits longdigits::operator - (UINT32 value)
+{
+	longdigits &num1 = *this, num2, diff;
+	num2.append_digit(value);
+	diff = num1 - num2;
+	num2.clear();
+	return diff;
+}
+
+longdigits longdigits::operator ++ ()
+{
+	longdigits &num1 = *this, num2, sum;
+	num2.append_digit(1);
+	sum = num1 + num2;
+	num2.clear();
+	return sum;
+}
+longdigits longdigits::operator -- ()
+{
+	longdigits &num1 = *this, num2, sum;
+	num2.append_digit(1);
+	sum = num1 - num2;
+	num2.clear();
+	return sum;
+}
 
 void longdigits::operator >> (UINT32 value)
 {
@@ -548,29 +576,6 @@ BOOL longdigits::setbit(UINT32 Idx, BOOL Value)
 	return FALSE;
 }
 
-longdigits longdigits::operator + (UINT32 value)
-{
-	UINT64 v1 = value;
-	UINT32 v2 = 0;
-	longdigits sum;
-	linkedList *list = this->longdigit;
-	linkedList *sumlist = NULL;
-	
-	while (list)
-	{
-			v1 += list->get_value();
-			v2 = v1 & 0xFFFFFFFF;
-			v1 >>= 32;
-			sumlist = sum.append_digit(sumlist, v2);
-			list = list->get_next();
-	}
-	if (v1)
-	{
-		sumlist = sum.append_digit(sumlist, v1);
-	}
-	return sum;
-}
-
 void longdigits::scalarmultiply (UINT32 value)
 {
 	UINT64 v1 = 0;
@@ -591,95 +596,6 @@ void longdigits::scalarmultiply (UINT32 value)
 	{
 		this->append_digit(listp, v1);
 	}
-}
-
-longdigits longdigits::operator ++ ()
-{
-	UINT64 v1 = 1;
-	UINT32 v2 = 0;
-	linkedList *list = this->longdigit;
-	linkedList *listp = NULL;
-
-	while (list)
-	{
-		v1 += list->get_value();
-		v2 = v1 & 0xFFFFFFFF;
-		v1 >>= 32;
-		list->set_value(v2);
-		listp = list;
-		list = list->get_next();
-	}
-	if (v1)
-	{
-		this->append_digit(listp, v1);
-	}
-	return *this;
-}
-
-longdigits longdigits::operator -- ()
-{
-	UINT64 v1 = 1;
-	UINT32 v2 = 0;
-	linkedList *list = this->longdigit;
-	linkedList *listp = NULL;
-
-	while (list)
-	{
-		v1 = list->get_value();
-		if (v1 > 0)
-		{
-			list->set_value(v1 - 1);
-			listp = list;
-			list = NULL;
-		}
-		else
-		{
-			list->set_value(0xFFFFFFFF);
-			list = list->get_next();
-		}
-	}
-	if (!listp->get_value() && listp->get_prev() && !listp->get_next())
-	{
-		this->delete_digit(listp);
-	}
-	return *this;
-}
-
-longdigits longdigits::operator - (UINT32 value)
-{
-	UINT64 v1 = value;
-	UINT32 v2 = 0;
-	longdigits diff;
-	linkedList *list = this->longdigit;
-	linkedList *difflist = NULL;
-
-	while (list && value)
-	{
-		if (list && value)
-		{
-			v1 = list->get_value();
-			if (v1 < value) {
-				v1 = v1 + 0x100000000 - value;
-				value = 1;
-			}
-			else
-			{
-				v1 -= value;
-				value = 0;
-			}
-			difflist = diff.append_digit(difflist, v1);
-			if (!list->get_next() && !v1 && difflist->get_prev())
-			{
-				diff.delete_digit(difflist);
-				list = NULL;
-			}
-			else
-			{
-				list = list->get_next();
-			}
-		}
-	}
-	return diff;
 }
 
 longdigits longdigits::operator ~ ()
@@ -712,6 +628,7 @@ void longdigits::copy(longdigits &num)
 			list1 = list1->get_next();
 		}
 	}
+	num.setsign(this->getsign());
 }
 
 bool longdigits::divide(longdigits &denominator,
@@ -750,6 +667,20 @@ bool longdigits::divide(longdigits &denominator,
 		subproduct.clear();
 		intermediate >> 1;
 	}
+
+
+	SIGN num1sign, num2sign;
+	num1sign = numerator.getsign();
+	num2sign = denominator.getsign();
+	if (num1sign != num2sign)
+	{
+		quotient.setsign(NEGATIVE);
+	}
+	else
+	{
+		quotient.setsign(POSTIVE);
+	}
+	reminder.setsign(num1sign);
 
 	return TRUE;
 }
@@ -809,6 +740,17 @@ longdigits longdigits::operator * (longdigits &num)
 		product += intermediate;
 		intermediate.clear();
 	}
+	SIGN num1sign, num2sign;
+	num1sign = this->getsign();
+	num2sign = num.getsign();
+	if (num1sign != num2sign)
+	{
+		product.setsign(NEGATIVE);
+	}
+	else
+	{
+		product.setsign(POSTIVE);
+	}
 	return product;
 }
 
@@ -832,6 +774,41 @@ void printall(char *tag, longdigits &num1, longdigits &num2, longdigits &num3, l
 }
 
 
+longdigits inverse(longdigits a, longdigits n)
+{
+	longdigits inv, newinv;
+	longdigits r, newr, quotient, temp;
+	longdigits noinv;
+	
+	inv.append_digit(0);
+	newinv.append_digit(1);
+	n.copy(r);
+	a.copy(newr);
+
+	while (newr != 0)
+	{
+		quotient = r / newr;
+		temp.clear();
+		temp = inv - quotient * newinv;
+		inv.clear(); newinv.copy(inv);
+		newinv.clear(); temp.copy(newinv);
+
+		temp.clear();
+		temp = r - quotient * newr;
+		r.clear(); newr.copy(r);
+		newr.clear(); temp.copy(newr);
+	}
+	if (r > 1)
+	{
+		return noinv; //Not invertible
+	}
+
+	if (inv < 0)
+	{
+		inv += n;
+	}
+	return inv;
+}
 
 void main()
 {
@@ -863,6 +840,18 @@ void main()
 	num4 = num1 % num2;
 	printall("Test5", num1, num2, num3, num4);
 	num3.clear(); num4.clear();
+
+
+	longdigits p, q, N, r, e, d;
+	p.readHexString(str_p);
+	q.readHexString(str_q);
+	N = p * q;
+	r = (p - 1) * (q - 1);
+	e.readHexString(str_e);
+	d = inverse(e, r);
+
+	printall("RSA1", p, q, N, r);
+	printall("RSA2", e, N, d, N);
 
 
 
