@@ -859,8 +859,10 @@ longdigits inverse(longdigits a, longdigits n)
 	}
 	return inv;
 }
+#include <string>
+#include <fstream>
 
-void main()
+void main1()
 {
 	CHAR *strtemp;
 	longdigits num1, num2, num3, num4;
@@ -912,4 +914,13 @@ void main()
 	int value = strlen(strtemp);
 	value++;
 
+	std::ifstream file("test.txt");
+	if (file.is_open()) {
+		std::string line;
+		while (std::getline(file, line)) {
+			// using printf() in all tests for consistency
+			printf("%s\n", line.c_str());
+		}
+		file.close();
+	}
 }
