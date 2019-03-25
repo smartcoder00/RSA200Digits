@@ -114,6 +114,7 @@ private:
 
 public:
 	void readHexString(char *hexString);
+	void readBCDString(CHAR *);
 	void writeHexString(char **hexString);
 	UINT32 getcounter() { return counter; }
 	linkedList* append_digit(UINT32);
@@ -128,6 +129,8 @@ public:
 	longdigits operator + (UINT32);
 	longdigits operator - (longdigits const &num);
 	longdigits operator -= (longdigits const &num);
+	longdigits operator += (UINT32);
+	longdigits operator -= (UINT32);
 	longdigits operator - (UINT32);
 	longdigits operator * (longdigits &num);
 	longdigits operator / (longdigits &num);

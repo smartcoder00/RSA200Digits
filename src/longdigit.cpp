@@ -11,6 +11,37 @@ char str_p[] = "65";
 char str_q[] = "67";
 char str_e[] = "1F";
 
+void longdigits::readBCDString(CHAR *bcdString)
+{
+	if (bcdString)
+	{
+		CHAR signValue = bcdString[0];
+		if (signValue == '+' || signValue == '-')
+		{
+			bcdString++;
+			if (signValue == '-')
+				this->setsign(NEGATIVE);
+		}
+
+		UINT32 len = strlen(bcdString);
+		CHAR *hexStringtemp = new CHAR[len + 1];
+		linkedList *list = longdigit;
+		append_digit(0);
+		CHAR *end_ptr;
+		INT32 start_index;
+		UINT32 value;
+		strcpy(hexStringtemp, bcdString);
+		for (INT32 i = len - 1; i >= 0; i -= 8)
+		{
+			end_ptr = &hexStringtemp[i];
+			hexStringtemp[i + 1] = 0;
+			start_index = max(i - 7, 0);
+			value = strtoul(&hexStringtemp[start_index], &end_ptr, 10);
+			*this += value;
+		}
+
+	}
+}
 
 void longdigits::readHexString(CHAR *hexString)
 {
@@ -46,7 +77,7 @@ void longdigits::readHexString(CHAR *hexString)
 void longdigits::writeHexString(char **hexString)
 {
 	INT32 count = counter;
-	char *str = new CHAR[counter * 8 +2];
+	char *str = new CHAR[counter * 8 + 2];
 	str[0] = NULL;
 	linkedList *list = longdigit;
 	for (INT32 i = 0; i < counter; i++)
@@ -458,6 +489,25 @@ longdigits longdigits::operator - (UINT32 value)
 	return diff;
 }
 
+longdigits longdigits::operator += (UINT32 num2)
+{
+	longdigits sum = *this + num2;
+	this->clear();
+	this->longdigit = sum.longdigit;
+	this->counter = sum.getcounter();
+	this->setsign(sum.getsign());
+	return sum;
+}
+
+longdigits longdigits::operator -= (UINT32 num2)
+{
+	longdigits diff = *this - num2;
+	this->clear();
+	this->longdigit = diff.longdigit;
+	this->counter = diff.getcounter();
+	this->setsign(diff.getsign());
+	return diff;
+}
 longdigits longdigits::operator ++ ()
 {
 	longdigits &num1 = *this, num2, sum;
@@ -815,7 +865,7 @@ void main()
 	CHAR *strtemp;
 	longdigits num1, num2, num3, num4;
 	num1.readHexString(str1);
-	num2.readHexString(str2);;
+	num2.readHexString(str2);
 	printall("Read Data",num1, num2, num3, num4);
 
 	num3 = num1 + num2;
