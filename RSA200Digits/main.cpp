@@ -40,10 +40,10 @@ static longdigits inverse(longdigits a, longdigits n)
 	}
 	return inv;
 }
-bool GetStrings(char **StringList)
+bool GetStrings(char **StringList, char *path)
 {
 	int i = 0, MAX_STRING = 3;
-	std::ifstream file("c:\\test.txt");
+	std::ifstream file(path);
 	if (file.is_open()) {
 		std::string line;
 		while (std::getline(file, line) && i < MAX_STRING) {
@@ -58,11 +58,20 @@ bool GetStrings(char **StringList)
 	}
 	return TRUE;
 }
-void main()
+void main(int argc, char *argv[])
 {
 	CHAR *StringList[3];
-	GetStrings(StringList);
-	printf("============== Input ==============");
+	if (argc >= 2)
+	{
+		printf("Input File %s\n",argv[1]);
+	}
+	else
+	{
+		printf("Need Input File as argument");
+		return;
+	}
+	GetStrings(StringList, argv[1]);
+	printf("============== Input ==============\n");
 	printf("p: %s\n", StringList[0]);
 	printf("q: %s\n", StringList[1]);
 	printf("e: %s\n", StringList[2]);
